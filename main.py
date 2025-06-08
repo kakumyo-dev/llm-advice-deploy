@@ -2,6 +2,8 @@ from flask import Flask, jsonify
 from google.cloud import bigquery
 from dotenv import load_dotenv
 import os
+import openai
+print(f"✅ openai version: {openai.__version__}")
 from openai import OpenAI
 
 app = Flask(__name__)
