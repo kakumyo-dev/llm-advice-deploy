@@ -1,5 +1,5 @@
 flask
 google-cloud-bigquery
-openai
+openai>=1.3.7
 python-dotenv
 functions-framework==3.*
