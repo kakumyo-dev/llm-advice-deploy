@@ -3,7 +3,6 @@ from google.cloud import bigquery
 from dotenv import load_dotenv
 import os
 from openai import OpenAI
-print(f"✅ openai version: {openai.__version__}")
 
 app = Flask(__name__)
 
@@ -42,7 +41,7 @@ def index():
         print(f"📋 Prompt data prepared: {prompt_data[:200]}...")  # 長すぎる場合は先頭のみ表示
 
         # OpenAI GPT-4o にリクエスト
-        response = client.chat.completions.create(
+        response = openai_client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "あなたは専門的な医療知識を持つ医師です。"},
