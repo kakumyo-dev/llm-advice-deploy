@@ -17,23 +17,18 @@ if not api_key:
 else:
     print("✅ OPENAI_API_KEY loaded")
 
-# OpenAIクライアント初期化
-try:
-    openai_client = OpenAI(api_key=api_key)
-    print("✅ OpenAI client initialized")
-except Exception as e:
-    print(f"❌ Failed to initialize OpenAI client: {e}")
-
 @app.route("/")
 def index():
     try:
-        client = bigquery.Client()
+        bigquery_client = bigquery.Client()
+        openai_client = OpenAI(api_key=api_key)
+        print("✅ OpenAI client initialized")
         query = """
             SELECT *
             FROM `dev.syacho_kojin_copy`
             LIMIT 10
         """
-        query_job = client.query(query)
+        query_job = bigquery_client.query(query)
         results = query_job.result()
 
         data_list = [dict(row.items()) for row in results]
