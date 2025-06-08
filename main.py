@@ -9,7 +9,7 @@ def index():
         client = bigquery.Client()
         query = """
             SELECT *
-            FROM `dev.syacho-kojin`
+            FROM `dev.syacho_kojin_copy`
             LIMIT 10
         """
         query_job = client.query(query)
