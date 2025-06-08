@@ -3,6 +3,7 @@ from google.cloud import bigquery
 from dotenv import load_dotenv
 import os
 from openai import OpenAI
+print(f"✅ openai version: {openai.__version__}")
 
 app = Flask(__name__)
 
