@@ -23,7 +23,7 @@ def index():
         query_job = client.query(query)
         results = query_job.result()
 
-        data = [dict(row.items()) for row in results]
+        data_list = [dict(row.items()) for row in results]
         prompt_data = "\n".join([str(row) for row in data_list])
 
         # OpenAI GPT-4o にリクエスト
