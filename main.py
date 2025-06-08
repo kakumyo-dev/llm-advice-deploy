@@ -2,8 +2,7 @@ from flask import Flask, jsonify
 from google.cloud import bigquery
 from dotenv import load_dotenv
 import os
-
-load_dotenv()
+from openai import OpenAI
 
 app = Flask(__name__)
 
