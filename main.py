@@ -21,7 +21,7 @@ def index():
             print("❌ OPENAI_API_KEY is not set")
         else:
             print("✅ OPENAI_API_KEY loaded")
-        openai_client = OpenAI(api_key=api_key)
+        openai_client = OpenAI(base_url="https://api.openai.com/v1", api_key=api_key)
         print("✅ OpenAI client initialized")
 
         bigquery_client = bigquery.Client()
