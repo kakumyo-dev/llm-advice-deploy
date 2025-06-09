@@ -49,8 +49,21 @@ def index():
             ]
         )
 
+        llm_advice_content = response.choices[0].message.content
+        print(f"💬 GPT response: {llm_advice_content}")
+
+        # BigQueryに保存
+        table_id = "dev.llm-advice"
+        rows_to_insert = [{"llm-advice": llm_advice_content}]
+        errors = bigquery_client.insert_rows_json(table_id, rows_to_insert)
+        if errors:
+            print(f"❌ Failed to insert rows: {errors}")
+            return jsonify({"error": "BigQuery insert failed", "details": errors}), 500
+
+        print("✅ GPT response saved to BigQuery")
+
         # GPTの応答を返却
-        return response.choices[0].message.content
+        return llm_advice_content
     except Exception as e:
         print(f"❌ Exception occurred: {e}")
         return jsonify({"error": str(e)}), 500
