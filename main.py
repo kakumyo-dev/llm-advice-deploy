@@ -13,15 +13,16 @@ print("✅ Flask app initialized")
 load_dotenv()  # .env ファイルを読み込み、環境変数に反映
 print("✅ .env loaded")
 
+api_key = os.environ.get("OPENAI_API_KEY")
+if not api_key:
+    print("❌ OPENAI_API_KEY is not set")
+else:
+    print("✅ OPENAI_API_KEY loaded")
+
 @app.route("/")
 def index():
     try:
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            print("❌ OPENAI_API_KEY is not set")
-        else:
-            print("✅ OPENAI_API_KEY loaded")
-        openai_client = OpenAI(base_url="https://api.openai.com/v1", api_key=api_key)
+        openai_client = OpenAI(base_url="https://api.openai.com/v1",api_key=api_key)
         print("✅ OpenAI client initialized")
 
         bigquery_client = bigquery.Client()
