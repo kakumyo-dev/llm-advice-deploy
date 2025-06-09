@@ -22,6 +22,7 @@ else:
 @app.route("/")
 def index():
     try:
+        print("🔄 Initializing OpenAI client...")
         openai_client = OpenAI(base_url="https://api.openai.com/v1",api_key=api_key)
         print("✅ OpenAI client initialized")
 
@@ -39,14 +40,16 @@ def index():
         print(f"📋 Prompt data prepared: {prompt_data[:200]}...")  # 長すぎる場合は先頭のみ表示
 
         # OpenAI GPT-4o にリクエスト
-        response = openai_client.responses.create(
+        response = openai_client.chat.completions.create(
             model="gpt-4o",
-            instructions="あなたは専門的な医療知識を持つ医師です。",
-            input=f"以下のOuraRingから取得した健康データから医学的アドバイスをください：\n\n{prompt_data}",
+            messages=[
+                {"role": "system", "content": "あなたは専門的な医療知識を持つ医師です。"},
+                {"role": "user", "content": f"以下のOuraRingから取得した健康データから医学的アドバイスをください：\n\n{prompt_data}"}
+            ]
         )
 
         # GPTの応答を返却
-        return response.output_text
+        return response.choices[0].message.content
     except Exception as e:
         print(f"❌ Exception occurred: {e}")
         return jsonify({"error": str(e)}), 500
