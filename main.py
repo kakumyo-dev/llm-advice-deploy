@@ -30,6 +30,7 @@ def index():
         query = """
             SELECT *
             FROM `dev.syacho_kojin_copy`
+            WHERE date BETWEEN '2020-09-01' AND '2020-09-30' ORDER BY date ASC 
             LIMIT 10
         """
         query_job = bigquery_client.query(query)
@@ -37,7 +38,7 @@ def index():
         data_list = [dict(row.items()) for row in results]
 
         prompt_data = "\n".join([str(row) for row in data_list])
-        print(f"📋 Prompt data prepared: {prompt_data[:200]}...")  # 長すぎる場合は先頭のみ表示
+        print(f"📋 Prompt data prepared: {prompt_data}")
 
         # OpenAI GPT-4o にリクエスト
         response = openai_client.chat.completions.create(
