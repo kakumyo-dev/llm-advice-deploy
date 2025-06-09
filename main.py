@@ -18,12 +18,12 @@ if not api_key:
     print("❌ OPENAI_API_KEY is not set")
 else:
     print("✅ OPENAI_API_KEY loaded")
+    openai.api_key = api_key  # ← 正しい設定方法
 
 @app.route("/")
 def index():
     try:
         bigquery_client = bigquery.Client()
-        openai_client = OpenAI(api_key=api_key)
         print("✅ OpenAI client initialized")
         query = """
             SELECT *
@@ -38,7 +38,7 @@ def index():
         print(f"📋 Prompt data prepared: {prompt_data[:200]}...")  # 長すぎる場合は先頭のみ表示
 
         # OpenAI GPT-4o にリクエスト
-        response = openai_client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "あなたは専門的な医療知識を持つ医師です。"},
