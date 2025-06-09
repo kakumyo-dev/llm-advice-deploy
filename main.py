@@ -17,7 +17,7 @@ api_key = os.environ.get("OPENAI_API_KEY")
 if not api_key:
     print("❌ OPENAI_API_KEY is not set")
 else:
-    print("✅ OPENAI_API_KEY loaded")
+    print(f"✅ OPENAI_API_KEY loaded: {api_key[:5]}***")
 
 @app.route("/")
 def index():
