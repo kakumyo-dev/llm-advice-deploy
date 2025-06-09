@@ -23,7 +23,7 @@ else:
 def index():
     try:
         print("🔄 Initializing OpenAI client...")
-        openai_client = OpenAI(base_url="https://api.openai.com/v1",api_key=api_key)
+        openai_client = OpenAI()
         print("✅ OpenAI client initialized")
 
         bigquery_client = bigquery.Client()
