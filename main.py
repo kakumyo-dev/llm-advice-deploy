@@ -28,10 +28,11 @@ def index():
 
         bigquery_client = bigquery.Client()
         query = """
-            SELECT *
-            FROM `dev.syacho_kojin_copy`
-            WHERE date BETWEEN '2020-09-01' AND '2020-09-30' ORDER BY date ASC 
-            LIMIT 10
+            SELECT * 
+            FROM `sic-ouraring-verify.gcube.sleep` 
+            WHERE summary_date BETWEEN '2020-09-01' AND '2020-09-30' 
+            ORDER BY summary_date ASC 
+            LIMIT 3
         """
         query_job = bigquery_client.query(query)
         results = query_job.result()
@@ -53,7 +54,7 @@ def index():
         print(f"💬 GPT response: {llm_advice_content}")
 
         # BigQueryに保存
-        table_id = "dev.llm_advice"
+        table_id = "llm_advicebot.llm_advice"
         rows_to_insert = [{"llm_advice": llm_advice_content}]
         errors = bigquery_client.insert_rows_json(table_id, rows_to_insert)
         if errors:
