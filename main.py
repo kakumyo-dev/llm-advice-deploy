@@ -5,6 +5,7 @@ import os
 import openai
 print(f"✅ openai version: {openai.__version__}")
 from openai import OpenAI
+import json
 
 app = Flask(__name__)
 
@@ -45,7 +46,15 @@ def index():
         response = openai_client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": "あなたは専門的な医療知識を持つ医師です。"},
+                {"role": "system", "content": """あなたは専門的な医療知識を持つ医師です。
+以下の形式のJSONで回答してください：
+{
+    "sleep_analysis": "睡眠に関する分析とアドバイス",
+    "activity_analysis": "活動量に関する分析とアドバイス",
+    "readiness_analysis": "体調に関する分析とアドバイス",
+    "recommendations": "具体的な改善提案",
+    "overall_assessment": "総合的な評価"
+}"""},
                 {"role": "user", "content": f"以下のOuraRingから取得した健康データから医学的アドバイスをください：\n\n{prompt_data}"}
             ]
         )
@@ -53,9 +62,22 @@ def index():
         llm_advice_content = response.choices[0].message.content
         print(f"💬 GPT response: {llm_advice_content}")
 
+        # JSON文字列をPythonオブジェクトに変換
+        try:
+            advice_data = json.loads(llm_advice_content)
+        except json.JSONDecodeError as e:
+            print(f"❌ Failed to parse JSON response: {e}")
+            return jsonify({"error": "Invalid JSON response from GPT"}), 500
+
         # BigQueryに保存
         table_id = "llm_advicebot.llm_advice_makino"
-        rows_to_insert = [{"llm_advice": llm_advice_content}]
+        rows_to_insert = [{
+            "sleep_analysis": advice_data.get("sleep_analysis", ""),
+            "activity_analysis": advice_data.get("activity_analysis", ""),
+            "readiness_analysis": advice_data.get("readiness_analysis", ""),
+            "recommendations": advice_data.get("recommendations", ""),
+            "overall_assessment": advice_data.get("overall_assessment", "")
+        }]
         errors = bigquery_client.insert_rows_json(table_id, rows_to_insert)
         if errors:
             print(f"❌ Failed to insert rows: {errors}")
