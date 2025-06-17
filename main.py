@@ -54,7 +54,7 @@ def index():
         print(f"💬 GPT response: {llm_advice_content}")
 
         # BigQueryに保存
-        table_id = "llm_advicebot.llm_advice"
+        table_id = "llm_advicebot.llm_advice_makino"
         rows_to_insert = [{"llm_advice": llm_advice_content}]
         errors = bigquery_client.insert_rows_json(table_id, rows_to_insert)
         if errors:
