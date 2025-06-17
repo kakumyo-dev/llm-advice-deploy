@@ -64,6 +64,9 @@ def index():
         llm_advice_content = response.choices[0].message.content
         print(f"💬 GPT response: {llm_advice_content}")
 
+        # マークダウンのコードブロック記法を除去
+        llm_advice_content = llm_advice_content.replace("```json", "").replace("```", "").strip()
+
         # JSON文字列をPythonオブジェクトに変換
         try:
             advice_data = json.loads(llm_advice_content)
