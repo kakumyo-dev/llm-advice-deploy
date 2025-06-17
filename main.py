@@ -29,11 +29,47 @@ def index():
 
         bigquery_client = bigquery.Client()
         query = """
-            SELECT * 
-            FROM `sic-ouraring-verify.gcube.sleep` 
-            WHERE summary_date BETWEEN '2020-09-01' AND '2020-09-30' 
-            ORDER BY summary_date ASC 
-            LIMIT 3
+WITH sleep AS (
+  SELECT 
+    summary_date,
+    participant_uid,
+    score,
+    total,
+    light,
+    rem,
+    deep
+  FROM `sic-ouraring-verify.gcube.sleep`
+  WHERE total >= 3600
+),
+activity AS (
+  SELECT 
+    summary_date,
+    participant_uid,
+    non_wear,
+    inactive,
+    inactivity_alerts,
+    steps
+  FROM `sic-ouraring-verify.gcube.activity`
+  WHERE non_wear <= 14400
+)
+
+SELECT 
+  s.summary_date,
+  s.score AS sleep_score,
+  s.total AS total_sleep_seconds,
+  s.light AS light_sleep_seconds,
+  s.rem AS rem_sleep_seconds,
+  s.deep AS deep_sleep_seconds,
+  a.non_wear,
+  a.inactive,
+  a.inactivity_alerts,
+  a.steps,
+FROM sleep s
+LEFT JOIN activity a
+  ON s.summary_date = a.summary_date AND s.participant_uid = a.participant_uid
+WHERE s.summary_date BETWEEN DATE_TRUNC(CURRENT_DATE(), MONTH) AND LAST_DAY(CURRENT_DATE())
+ORDER BY s.summary_date ASC 
+LIMIT 10
         """
         query_job = bigquery_client.query(query)
         results = query_job.result()
