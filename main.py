@@ -54,7 +54,9 @@ def index():
     "readiness_analysis": "体調に関する分析とアドバイス",
     "recommendations": "具体的な改善提案",
     "overall_assessment": "総合的な評価"
-}"""},
+}
+                 
+最終応答は、"{"で始まり"}"で終わる。または"["で始まり"]"で終わるJSONのみを出力し、JSON以外の文字は一切応答に含めないでください。"""},
                 {"role": "user", "content": f"以下のOuraRingから取得した健康データから医学的アドバイスをください：\n\n{prompt_data}"}
             ]
         )
