@@ -6,6 +6,7 @@ import openai
 print(f"✅ openai version: {openai.__version__}")
 from openai import OpenAI
 import json
+from datetime import date
 
 app = Flask(__name__)
 
@@ -110,7 +111,7 @@ LIMIT 1000
         # BigQueryに保存
         table_id = "llm_advicebot.llm_advice_makino"
         rows_to_insert = [{
-            "summary_date": data_list[0]["date"],  # 最初のレコードの日付を使用
+            "summary_date": date.today().isoformat(),  # 現在の日付を使用
             "sleep_analysis": advice_data.get("sleep_analysis", ""),
             "activity_analysis": advice_data.get("activity_analysis", ""),
             "readiness_analysis": advice_data.get("readiness_analysis", ""),
