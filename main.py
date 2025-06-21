@@ -71,7 +71,7 @@ LEFT JOIN activity a
   ON s.summary_date = a.summary_date AND s.participant_uid = a.participant_uid
 WHERE s.summary_date BETWEEN DATE_TRUNC(CURRENT_DATE(), MONTH) AND LAST_DAY(CURRENT_DATE())
 ORDER BY s.participant_uid ASC,s.summary_date ASC
-LIMIT 10
+LIMIT 100
         """
         query_job = bigquery_client.query(query)
         results = query_job.result()
