@@ -8,6 +8,8 @@ from openai import OpenAI
 import json
 from datetime import date
 from collections import defaultdict
+import time
+import httpx
 
 app = Flask(__name__)
 
@@ -68,7 +70,7 @@ FROM sleep s
 LEFT JOIN activity a
   ON s.summary_date = a.summary_date AND s.participant_uid = a.participant_uid
 WHERE s.summary_date BETWEEN DATE_TRUNC(CURRENT_DATE(), MONTH) AND LAST_DAY(CURRENT_DATE())
-ORDER BY s.summary_date ASC
+ORDER BY s.participant_uid ASC,s.summary_date ASC
 LIMIT 10
         """
         query_job = bigquery_client.query(query)
@@ -91,11 +93,16 @@ LIMIT 10
             prompt_data = "\n".join([str(item) for item in user_data])
             print(f"📋 Prompt data prepared for participant {participant_id}")
 
-            # OpenAI GPT-4o にリクエスト
-            response = openai_client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": """あなたは専門的な医療知識を持つ医師です。
+            # OpenAI GPT-4o にリクエスト（リトライ機能付き）
+            max_retries = 3
+            retry_delay = 2  # 秒
+            
+            for attempt in range(max_retries):
+                try:
+                    response = openai_client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": """あなたは専門的な医療知識を持つ医師です。
 以下の形式のJSONで回答してください：
 {
     "sleep_analysis": "睡眠に関する分析とアドバイス",
@@ -106,12 +113,27 @@ LIMIT 10
 }
                  
 最終応答は、"{"で始まり"}"で終わる。または"["で始まり"]"で終わるJSONのみを出力し、JSON以外の文字は一切応答に含めないでください。"""},
-                    {"role": "user", "content": f"以下のOuraRingから取得した健康データから医学的アドバイスをください：\n\n{prompt_data}"}
-                ]
-            )
-
-            llm_advice_content = response.choices[0].message.content
-            print(f"💬 GPT response for {participant_id}: {llm_advice_content}")
+                            {"role": "user", "content": f"以下のOuraRingから取得した健康データから医学的アドバイスをください：\n\n{prompt_data}"}
+                        ],
+                        timeout=60  # 60秒のタイムアウト
+                    )
+                    
+                    llm_advice_content = response.choices[0].message.content
+                    print(f"💬 GPT response for {participant_id}: {llm_advice_content}")
+                    break  # 成功したらループを抜ける
+                    
+                except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError) as e:
+                    print(f"⚠️ Network error for {participant_id} (attempt {attempt + 1}/{max_retries}): {e}")
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # 指数バックオフ
+                        continue
+                    else:
+                        print(f"❌ Failed to get response for {participant_id} after {max_retries} attempts")
+                        continue
+                except Exception as e:
+                    print(f"❌ Unexpected error for {participant_id}: {e}")
+                    continue
 
             # マークダウンのコードブロック記法を除去
             llm_advice_content = llm_advice_content.replace("```json", "").replace("```", "").strip()
@@ -135,6 +157,9 @@ LIMIT 10
                 "overall_assessment": advice_data.get("overall_assessment", "")
             }
             all_rows_to_insert.append(rows_to_insert)
+            
+            # 各リクエスト間に少し待機時間を入れる
+            time.sleep(1)
 
         # BigQueryに一括で保存
         if all_rows_to_insert:
