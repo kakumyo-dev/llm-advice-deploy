@@ -7,6 +7,7 @@ print(f"✅ openai version: {openai.__version__}")
 from openai import OpenAI
 import json
 from datetime import date
+from collections import defaultdict
 
 app = Flask(__name__)
 
@@ -56,31 +57,45 @@ activity AS (
 
 SELECT 
   s.summary_date AS date,
+  s.participant_uid AS id,
   s.score AS sleep_score,
   s.total AS total_sleep_seconds,
   s.light AS light_sleep_seconds,
   s.rem AS rem_sleep_seconds,
   s.deep AS deep_sleep_seconds,
-  a.steps,
+  a.steps
 FROM sleep s
 LEFT JOIN activity a
   ON s.summary_date = a.summary_date AND s.participant_uid = a.participant_uid
 WHERE s.summary_date BETWEEN DATE_TRUNC(CURRENT_DATE(), MONTH) AND LAST_DAY(CURRENT_DATE())
 ORDER BY s.summary_date ASC
-LIMIT 1000
+LIMIT 10
         """
         query_job = bigquery_client.query(query)
         results = query_job.result()
         data_list = [dict(row.items()) for row in results]
 
-        prompt_data = "\n".join([str(row) for row in data_list])
-        print(f"📋 Prompt data prepared: {prompt_data}")
+        # Group data by participant ID
+        data_by_id = defaultdict(list)
+        for row in data_list:
+            row_copy = dict(row)
+            if 'date' in row_copy and isinstance(row_copy['date'], date):
+                row_copy['date'] = row_copy['date'].isoformat()
+            data_by_id[row['id']].append(row_copy)
 
-        # OpenAI GPT-4o にリクエスト
-        response = openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": """あなたは専門的な医療知識を持つ医師です。
+        all_rows_to_insert = []
+        all_llm_responses = []
+
+        # Process each participant's data
+        for participant_id, user_data in data_by_id.items():
+            prompt_data = "\n".join([str(item) for item in user_data])
+            print(f"📋 Prompt data prepared for participant {participant_id}")
+
+            # OpenAI GPT-4o にリクエスト
+            response = openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": """あなたは専門的な医療知識を持つ医師です。
 以下の形式のJSONで回答してください：
 {
     "sleep_analysis": "睡眠に関する分析とアドバイス",
@@ -91,42 +106,49 @@ LIMIT 1000
 }
                  
 最終応答は、"{"で始まり"}"で終わる。または"["で始まり"]"で終わるJSONのみを出力し、JSON以外の文字は一切応答に含めないでください。"""},
-                {"role": "user", "content": f"以下のOuraRingから取得した健康データから医学的アドバイスをください：\n\n{prompt_data}"}
-            ]
-        )
+                    {"role": "user", "content": f"以下のOuraRingから取得した健康データから医学的アドバイスをください：\n\n{prompt_data}"}
+                ]
+            )
 
-        llm_advice_content = response.choices[0].message.content
-        print(f"💬 GPT response: {llm_advice_content}")
+            llm_advice_content = response.choices[0].message.content
+            print(f"💬 GPT response for {participant_id}: {llm_advice_content}")
 
-        # マークダウンのコードブロック記法を除去
-        llm_advice_content = llm_advice_content.replace("```json", "").replace("```", "").strip()
+            # マークダウンのコードブロック記法を除去
+            llm_advice_content = llm_advice_content.replace("```json", "").replace("```", "").strip()
 
-        # JSON文字列をPythonオブジェクトに変換
-        try:
-            advice_data = json.loads(llm_advice_content)
-        except json.JSONDecodeError as e:
-            print(f"❌ Failed to parse JSON response: {e}")
-            return jsonify({"error": "Invalid JSON response from GPT"}), 500
+            # JSON文字列をPythonオブジェクトに変換
+            try:
+                advice_data = json.loads(llm_advice_content)
+                all_llm_responses.append({participant_id: advice_data})
+            except json.JSONDecodeError as e:
+                print(f"❌ Failed to parse JSON response for {participant_id}: {e}")
+                continue # Skip this participant if JSON is invalid
 
-        # BigQueryに保存
-        table_id = "llm_advicebot.llm_advice_makino"
-        rows_to_insert = [{
-            "summary_date": date.today().isoformat(),  # 現在の日付を使用
-            "sleep_analysis": advice_data.get("sleep_analysis", ""),
-            "activity_analysis": advice_data.get("activity_analysis", ""),
-            "readiness_analysis": advice_data.get("readiness_analysis", ""),
-            "recommendations": advice_data.get("recommendations", ""),
-            "overall_assessment": advice_data.get("overall_assessment", "")
-        }]
-        errors = bigquery_client.insert_rows_json(table_id, rows_to_insert)
-        if errors:
-            print(f"❌ Failed to insert rows: {errors}")
-            return jsonify({"error": "BigQuery insert failed", "details": errors}), 500
+            # BigQueryに保存する行を準備
+            rows_to_insert = {
+                "summary_date": date.today().isoformat(),
+                "participant_uid": participant_id,
+                "sleep_analysis": advice_data.get("sleep_analysis", ""),
+                "activity_analysis": advice_data.get("activity_analysis", ""),
+                "readiness_analysis": advice_data.get("readiness_analysis", ""),
+                "recommendations": advice_data.get("recommendations", ""),
+                "overall_assessment": advice_data.get("overall_assessment", "")
+            }
+            all_rows_to_insert.append(rows_to_insert)
 
-        print("✅ GPT response saved to BigQuery")
+        # BigQueryに一括で保存
+        if all_rows_to_insert:
+            table_id = "llm_advicebot.llm_advice_makino"
+            errors = bigquery_client.insert_rows_json(table_id, all_rows_to_insert)
+            if errors:
+                print(f"❌ Failed to insert rows: {errors}")
+                return jsonify({"error": "BigQuery insert failed", "details": errors}), 500
+            print(f"✅ {len(all_rows_to_insert)} records saved to BigQuery")
+        else:
+            print("✅ No new records to save.")
 
         # GPTの応答を返却
-        return llm_advice_content
+        return jsonify(all_llm_responses)
     except Exception as e:
         print(f"❌ Exception occurred: {e}")
         return jsonify({"error": str(e)}), 500
