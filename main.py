@@ -7,6 +7,7 @@ print(f"✅ openai version: {openai.__version__}")
 from openai import OpenAI
 import json
 from datetime import date
+import httpx
 
 app = Flask(__name__)
 
@@ -25,7 +26,10 @@ else:
 def index():
     try:
         print("🔄 Initializing OpenAI client...")
-        openai_client = OpenAI(api_key=api_key)
+        openai_client = OpenAI(
+            api_key=api_key, 
+            timeout=httpx.Timeout(300.0, read=60.0, write=120.0, connect=10.0)
+        )
         print("✅ OpenAI client initialized")
 
         bigquery_client = bigquery.Client()
@@ -77,11 +81,13 @@ LIMIT 1000
         prompt_data = "\n".join([str(row) for row in data_list])
         print(f"📋 Prompt data prepared: {prompt_data}")
 
-        # OpenAI GPT-4o にリクエスト
-        response = openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": """あなたは健康状態を管理するベテランのアドバイザーです。
+        try:
+            print(f"🔄 Sending request to OpenAI...")
+            # OpenAI GPT-4o にリクエスト
+            response = openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": """あなたは健康状態を管理するベテランのアドバイザーです。
 データからその人の健康状態を知り、適切なアドバイスをすることがあなたの仕事です。
 生体情報(時間、運動量)を持っています。
 sleep_scoreは、数値が高いほど質の高い睡眠ができていることを意味します。
@@ -102,16 +108,23 @@ stepsは1日の歩数を表します。
 }
                  
 最終応答は、"{"で始まり"}"で終わる。または"["で始まり"]"で終わるJSONのみを出力し、JSON以外の文字は一切応答に含めないでください。"""},
-                {"role": "user", "content": f"""今ある人の1週間分の生体情報(時間、運動量)と
+                    {"role": "user", "content": f"""今ある人の1週間分の生体情報(時間、運動量)と
 1ヶ月の生体情報を持っています。
 
 直近の1週間分と1ヶ月分の生体情報の違いがあればわかりやすく説明してください。
 相手は専門家ではなく一般の人なので、数値だけに頼らず、
 運動量、睡眠時間などを丁寧に比較し、
 より分かりやすい文章で説明を行ってください。：\n\n{prompt_data}"""}
-            ],
-                timeout=300  # 最大タイムアウト値（5分）を設定
-        )
+                ]
+            )
+            print(f"✅ OpenAI response received")
+
+        except openai.APITimeoutError as e:
+            print(f"❌ OpenAI API timeout error: {e}", flush=True)
+            return jsonify({"error": "OpenAI API timeout"}), 408
+        except Exception as e:
+            print(f"❌ OpenAI API error: {e}")
+            return jsonify({"error": f"OpenAI API error: {str(e)}"}), 500
 
         llm_advice_content = response.choices[0].message.content
         print(f"💬 GPT response: {llm_advice_content}")
