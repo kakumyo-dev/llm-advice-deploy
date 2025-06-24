@@ -56,6 +56,7 @@ activity AS (
 
 SELECT 
   s.summary_date AS date,
+  s.participant_uid AS id,
   s.score AS sleep_score,
   s.total AS total_sleep_seconds,
   s.light AS light_sleep_seconds,
@@ -66,8 +67,8 @@ FROM sleep s
 LEFT JOIN activity a
   ON s.summary_date = a.summary_date AND s.participant_uid = a.participant_uid
 WHERE s.summary_date BETWEEN DATE_TRUNC(CURRENT_DATE(), MONTH) AND LAST_DAY(CURRENT_DATE())
-ORDER BY s.summary_date ASC
-LIMIT 1000
+ORDER BY s.participant_uid ASC,s.summary_date ASC
+LIMIT 100
         """
         query_job = bigquery_client.query(query)
         results = query_job.result()
