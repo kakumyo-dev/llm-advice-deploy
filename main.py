@@ -28,7 +28,7 @@ def index():
         print("🔄 Initializing OpenAI client...")
         openai_client = OpenAI(
             api_key=api_key, 
-            timeout=httpx.Timeout(300.0, read=60.0, write=120.0, connect=10.0)
+            timeout=httpx.Timeout(300.0, read=60.0, write=200.0, connect=20.0)
         )
         print("✅ OpenAI client initialized")
 
