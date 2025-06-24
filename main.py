@@ -109,7 +109,8 @@ stepsは1日の歩数を表します。
 相手は専門家ではなく一般の人なので、数値だけに頼らず、
 運動量、睡眠時間などを丁寧に比較し、
 より分かりやすい文章で説明を行ってください。：\n\n{prompt_data}"""}
-            ]
+            ],
+                timeout=300  # 最大タイムアウト値（5分）を設定
         )
 
         llm_advice_content = response.choices[0].message.content
