@@ -121,29 +121,53 @@ stepsは1日の歩数を表します。
         # JSON文字列をPythonオブジェクトに変換
         try:
             advice_data = json.loads(llm_advice_content)
+            print(f"✅ JSON parsed successfully: {type(advice_data)}")
         except json.JSONDecodeError as e:
             print(f"❌ Failed to parse JSON response: {e}")
+            print(f"❌ Raw response: {llm_advice_content}")
             return jsonify({"error": "Invalid JSON response from GPT"}), 500
 
         # BigQueryに保存
         table_id = "llm_advicebot.llm_advice_makino"
-        rows_to_insert = [{
-            "summary_date": date.today().isoformat(),  # 現在の日付を使用
-            "participant_uid": advice_data.get("id", ""),
-            "sleep_analysis": advice_data.get("sleep_analysis", ""),
-            "activity_analysis": advice_data.get("activity_analysis", ""),
-            "recommendations": advice_data.get("recommendations", ""),
-            "overall_assessment": advice_data.get("overall_assessment", "")
-        }]
-        errors = bigquery_client.insert_rows_json(table_id, rows_to_insert)
-        if errors:
-            print(f"❌ Failed to insert rows: {errors}")
-            return jsonify({"error": "BigQuery insert failed", "details": errors}), 500
+        
+        # advice_dataがリストの場合は各要素を処理、辞書の場合はリストに変換
+        if isinstance(advice_data, list):
+            advice_list = advice_data
+        elif isinstance(advice_data, dict):
+            advice_list = [advice_data]
+        else:
+            print(f"❌ Unexpected data structure: {type(advice_data)}")
+            return jsonify({"error": "Unexpected response structure from GPT"}), 500
 
-        print("✅ GPT response saved to BigQuery")
+        # 各IDのデータをBigQueryに保存
+        rows_to_insert = []
+        for advice_item in advice_list:
+            if isinstance(advice_item, dict) and "id" in advice_item:
+                row = {
+                    "summary_date": date.today().isoformat(),
+                    "participant_uid": advice_item.get("id", ""),
+                    "sleep_analysis": advice_item.get("sleep_analysis", ""),
+                    "activity_analysis": advice_item.get("activity_analysis", ""),
+                    "recommendations": advice_item.get("recommendations", ""),
+                    "overall_assessment": advice_item.get("overall_assessment", "")
+                }
+                rows_to_insert.append(row)
+                print(f"✅ Prepared data for ID: {advice_item.get('id', '')}")
+            else:
+                print(f"❌ Skipping invalid advice item: {advice_item}")
+
+        if rows_to_insert:
+            print(f"🔄 Inserting {len(rows_to_insert)} records to BigQuery")
+            errors = bigquery_client.insert_rows_json(table_id, rows_to_insert)
+            if errors:
+                print(f"❌ Failed to insert rows: {errors}")
+                return jsonify({"error": "BigQuery insert failed", "details": errors}), 500
+            print(f"✅ {len(rows_to_insert)} records saved to BigQuery")
+        else:
+            print("❌ No valid data to insert")
 
         # GPTの応答を返却
-        return llm_advice_content
+        return jsonify(advice_data)
     except Exception as e:
         print(f"❌ Exception occurred: {e}")
         return jsonify({"error": str(e)}), 500
