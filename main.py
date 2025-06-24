@@ -81,18 +81,34 @@ LIMIT 100
         response = openai_client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": """あなたは専門的な医療知識を持つ医師です。
+                {"role": "system", "content": """あなたは健康状態を管理するベテランのアドバイザーです。
+データからその人の健康状態を知り、適切なアドバイスをすることがあなたの仕事です。
+生体情報(時間、運動量)を持っています。
+sleep_scoreは、数値が高いほど質の高い睡眠ができていることを意味します。
+total_sleep_secondsは深い睡眠、light_sleep_secondsは浅い睡眠、rem_sleep_secondsはレム睡眠を表します。
+stepsは1日の歩数を表します。
+
+これから扱う生体情報には、データ更新が途中で止まっている可能性があり、
+欠損値や連続した同じ値が含まれているかもしれませんが、
+使える範囲でデータ分析を行い、必要以上に気にしすぎないでください。
+                 
 以下の形式のJSONで回答してください：
 {
+    "id": "id",
     "sleep_analysis": "睡眠に関する分析とアドバイス",
-    "activity_analysis": "活動量に関する分析とアドバイス",
-    "readiness_analysis": "体調に関する分析とアドバイス",
+    "activity_analysis": "歩数に関する分析とアドバイス",
     "recommendations": "具体的な改善提案",
     "overall_assessment": "総合的な評価"
 }
                  
 最終応答は、"{"で始まり"}"で終わる。または"["で始まり"]"で終わるJSONのみを出力し、JSON以外の文字は一切応答に含めないでください。"""},
-                {"role": "user", "content": f"以下のOuraRingから取得した健康データから医学的アドバイスをください：\n\n{prompt_data}"}
+                {"role": "user", "content": f"""今ある人の1週間分の生体情報(時間、運動量)と
+1ヶ月の生体情報を持っています。
+
+直近の1週間分と1ヶ月分の生体情報の違いがあればわかりやすく説明してください。
+相手は専門家ではなく一般の人なので、数値だけに頼らず、
+運動量、睡眠時間などを丁寧に比較し、
+より分かりやすい文章で説明を行ってください。：\n\n{prompt_data}"""}
             ]
         )
 
@@ -113,9 +129,9 @@ LIMIT 100
         table_id = "llm_advicebot.llm_advice_makino"
         rows_to_insert = [{
             "summary_date": date.today().isoformat(),  # 現在の日付を使用
+            "participant_uid": advice_data.get("id", ""),
             "sleep_analysis": advice_data.get("sleep_analysis", ""),
             "activity_analysis": advice_data.get("activity_analysis", ""),
-            "readiness_analysis": advice_data.get("readiness_analysis", ""),
             "recommendations": advice_data.get("recommendations", ""),
             "overall_assessment": advice_data.get("overall_assessment", "")
         }]
