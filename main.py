@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from google.cloud import bigquery
 from dotenv import load_dotenv
 import os
@@ -24,6 +24,7 @@ else:
 
 @app.route("/")
 def index():
+    participant_id = request.args.get("id")  # 例: /?id=user123
     try:
         print("🔄 Initializing OpenAI client...")
         openai_client = OpenAI(
@@ -33,7 +34,7 @@ def index():
         print("✅ OpenAI client initialized")
 
         bigquery_client = bigquery.Client()
-        query = """
+        query = f"""
 WITH sleep AS (
   SELECT 
     summary_date,
@@ -70,11 +71,16 @@ SELECT
 FROM sleep s
 LEFT JOIN activity a
   ON s.summary_date = a.summary_date AND s.participant_uid = a.participant_uid
-WHERE s.summary_date BETWEEN DATE_TRUNC(CURRENT_DATE(), MONTH) AND LAST_DAY(CURRENT_DATE())
+WHERE s.summary_date BETWEEN DATE_TRUNC(CURRENT_DATE(), MONTH) AND LAST_DAY(CURRENT_DATE()) {"AND s.participant_uid = @participant_id" if participant_id else ""}
 ORDER BY s.participant_uid ASC,s.summary_date ASC
 LIMIT 30
         """
-        query_job = bigquery_client.query(query)
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("participant_id", "STRING", participant_id)
+            ] if participant_id else []
+        )
+        query_job = bigquery_client.query(query, job_config=job_config)
         results = query_job.result()
         data_list = [dict(row.items()) for row in results]
 
