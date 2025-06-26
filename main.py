@@ -43,7 +43,10 @@ WITH sleep AS (
     total,
     light,
     rem,
-    deep
+    deep,
+    hr_average,
+    hr_lowest,
+    rmssd
   FROM `sic-ouraring-verify.gcube.sleep`
   WHERE total >= 3600
 ),
@@ -51,23 +54,32 @@ activity AS (
   SELECT 
     summary_date,
     participant_uid,
-    non_wear,
+    steps,
+    high,
+    medium,
+    low,
     inactive,
-    inactivity_alerts,
-    steps
+  	cal_total
   FROM `sic-ouraring-verify.gcube.activity`
   WHERE non_wear <= 14400
 )
 
 SELECT 
   s.summary_date AS date,
-  s.participant_uid AS id,
   s.score AS sleep_score,
   s.total AS total_sleep_seconds,
   s.light AS light_sleep_seconds,
   s.rem AS rem_sleep_seconds,
   s.deep AS deep_sleep_seconds,
+  s.hr_average AS sleep_heart_rate_average,
+  s.hr_lowest AS sleep_heart_rate_lowest,
+  s.rmssd AS sleep_rmssd,
   a.steps,
+  a.high AS high_intensity_activity_minutes,
+  a.medium AS medium_intensity_activity_minutes,
+  a.low AS low_intensity_activity_minutes,
+  a.inactive AS inactivity_minutes,
+  a.cal_total AS calorie_total
 FROM sleep s
 LEFT JOIN activity a
   ON s.summary_date = a.summary_date AND s.participant_uid = a.participant_uid
@@ -93,12 +105,14 @@ LIMIT 30
             response = openai_client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": """あなたは健康状態を管理するベテランのアドバイザーです。
+                    {"role": "system", "content": f"""あなたは健康状態を管理するベテランのアドバイザーです。
 データからその人の健康状態を知り、適切なアドバイスをすることがあなたの仕事です。
-生体情報(時間、運動量)を持っています。
+あなたは生体情報(睡眠、運動)を持っています。
 sleep_scoreは、数値が高いほど質の高い睡眠ができていることを意味します。
-total_sleep_secondsは深い睡眠、light_sleep_secondsは浅い睡眠、rem_sleep_secondsはレム睡眠を表します。
+deep_sleep_secondsは深い睡眠時間(秒)、light_sleep_secondsは浅い睡眠時間(秒)、rem_sleep_secondsはレム睡眠時間(秒)を表します。total_sleep_secondsは合計睡眠時間(秒)を表します。
 stepsは1日の歩数を表します。
+high_intensity_activity_minutesは高強度運動時間(分)、medium_intensity_activity_minutesは中強度運動時間(分)、low_intensity_activity_minutesは低強度運動時間(分)、inactive_minutesは非活動時間(分)を表します。
+calorie_totalは1日のカロリー消費量を表します。
 
 これから扱う生体情報には、データ更新が途中で止まっている可能性があり、
 欠損値や連続した同じ値が含まれているかもしれませんが、
@@ -106,18 +120,18 @@ stepsは1日の歩数を表します。
                  
 以下の形式のJSONでidごとに分けて回答してください：
 {
-    "id": "id",
+    "id": {participant_id},
     "sleep_analysis": "睡眠に関する分析とアドバイス",
-    "activity_analysis": "歩数に関する分析とアドバイス",
+    "activity_analysis": "運動に関する分析とアドバイス",
     "recommendations": "具体的な改善提案",
     "overall_assessment": "総合的な評価"
 }
                  
 最終応答は、"{"で始まり"}"で終わる。または"["で始まり"]"で終わるJSONのみを出力し、JSON以外の文字は一切応答に含めないでください。"""},
-                    {"role": "user", "content": f"""今ある企業の従業員の1ヶ月分の生体情報(時間、運動量)を持っています。
-                     データに存在する全てのidに対して分析結果の回答を作成してください。
+                    {"role": "user", "content": f"""ある企業の従業員の1ヶ月分の生体情報を持っています。
+                     idに対して分析結果の回答を作成してください。
 
-睡眠と歩数に関する分析とアドバイスには、難しい言葉は使わず、自然で寄り添うような文章で書いてください。
+睡眠と運動に関する分析とアドバイスには、難しい言葉は使わず、自然で寄り添うような文章で書いてください。
 具体的な改善提案と総合的な評価には、根拠やポジティブなメッセージを盛り込み、自然な日本語で書いてください。
 相手は専門家ではなく一般の人なので、数値だけに頼らず、
 運動量、睡眠時間などを丁寧に比較し、
