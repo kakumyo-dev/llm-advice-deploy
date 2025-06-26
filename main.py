@@ -85,7 +85,7 @@ LEFT JOIN activity a
   ON s.summary_date = a.summary_date AND s.participant_uid = a.participant_uid
 WHERE s.summary_date BETWEEN DATE_TRUNC(CURRENT_DATE(), MONTH) AND LAST_DAY(CURRENT_DATE()) {"AND s.participant_uid = @participant_id" if participant_id else ""}
 ORDER BY s.participant_uid ASC,s.summary_date ASC
-LIMIT 30
+LIMIT 100
         """
         job_config = bigquery.QueryJobConfig(
             query_parameters=[
@@ -109,12 +109,12 @@ LIMIT 30
 データからその人の健康状態を知り、適切なアドバイスをすることがあなたの仕事です。
 あなたは生体情報を持っています。
 sleep_scoreは、数値が高いほど質の高い睡眠ができていることを意味します。
-deep_sleep_secondsは深い睡眠時間(秒)、light_sleep_secondsは浅い睡眠時間(秒)、rem_sleep_secondsはレム睡眠時間(秒)を表します。total_sleep_secondsは合計睡眠時間(秒)を表します。
+deep_sleep_secondsはN3（最も深いノンレム睡眠）状態の深い睡眠時間(秒)を表します。light_sleep_secondsはN2（中間の深さのノンレム睡眠）もしくはN1（浅いノンレム睡眠）状態の浅い睡眠時間(秒)、rem_sleep_secondsはREM（レム睡眠）状態の睡眠時間(秒)を表します。total_sleep_secondsは合計睡眠時間(秒)を表します。
 sleep_heart_rate_averageは睡眠中の心拍数の平均値を表します。
 sleep_heart_rate_lowestは睡眠中の心拍数の最低値を表します。
 sleep_rmssdは睡眠中の心拍数の変動の平均を表します。
 stepsは1日の歩数を表します。
-high_intensity_activity_minutesは高強度運動時間(分)、medium_intensity_activity_minutesは中強度運動時間(分)、low_intensity_activity_minutesは低強度運動時間(分)、inactive_minutesは非活動時間(分)を表します。
+high_intensity_activity_minutesは自転車に乗る程度の高強度運動時間(分)、medium_intensity_activity_minutesはウォーキング程度の中強度運動時間(分)、low_intensity_activity_minutesは立っている程度の低強度運動時間(分)、inactive_minutesは座っている程度の非活動時間(分)を表します。
 calorie_totalは1日のカロリー消費量を表します。
 
 これから扱う生体情報には、データ更新が途中で止まっている可能性があり、
