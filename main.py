@@ -188,7 +188,7 @@ idは指定した文字列をそのままにして変更しないでください
         for advice_item in advice_list:
             if isinstance(advice_item, dict) and "id" in advice_item:
                 row = {
-                    "summary_date": date.today().isoformat(),
+                    "summary_date": "2025-07-31",
                     "participant_uid": advice_item.get("id", ""),
                     "sleep_analysis": advice_item.get("sleep_analysis", ""),
                     "activity_analysis": advice_item.get("activity_analysis", ""),
