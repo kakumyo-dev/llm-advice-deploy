@@ -83,7 +83,7 @@ SELECT
 FROM sleep s
 LEFT JOIN activity a
   ON s.summary_date = a.summary_date AND s.participant_uid = a.participant_uid
-WHERE s.summary_date BETWEEN "2025-07-01" AND "2025-07-31") {"AND s.participant_uid = @participant_id" if participant_id else ""}
+WHERE s.summary_date BETWEEN "2025-07-01" AND "2025-07-31" {"AND s.participant_uid = @participant_id" if participant_id else ""}
 ORDER BY s.participant_uid ASC,s.summary_date ASC
 LIMIT 100
         """
